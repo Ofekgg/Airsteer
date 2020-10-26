@@ -11,8 +11,10 @@ Build tutorial comeing soon :)
 
 
 Make sure to join our FB group! - https://www.facebook.com/groups/airsteer
+
 Follow on IG - https://www.instagram.com/airsteer.gaming
 
 Based on:
 Matthew Heironimus's Arduino Joystick Library https://github.com/MHeironimus/ArduinoJoystickLibrary
+
 Jeff Rowberg's I2Cdev Library https://github.com/jrowberg/i2cdevlib
