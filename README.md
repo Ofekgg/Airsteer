@@ -23,7 +23,8 @@ Follow on IG - https://www.instagram.com/airsteer.gaming
  
  
  
-Based on:
+ 
+### Credits & Libraries:
 
 Matthew Heironimus's Arduino Joystick Library https://github.com/MHeironimus/ArduinoJoystickLibrary
 
