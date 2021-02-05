@@ -1,4 +1,6 @@
-/* 
+/*
+ * NOTE: This sketch file is for use with Arduino Leonardo and Arduino Micro only.
+ * 
  * Code build by Ofek Golan
  * Joystick from Matthew Heironimus's Arduino Joystick Library https://github.com/MHeironimus/ArduinoJoystickLibrary
  * Jeff Rowberg's I2Cdev Library https://github.com/jrowberg/i2cdevlib
@@ -8,6 +10,7 @@
 #include <Joystick.h>
 #include <I2Cdev.h>
 #include <MPU6050.h>
+#include <Smoothed.h>
 
 Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID,JOYSTICK_TYPE_GAMEPAD,
   8, 0,                  // Button Count, Hat Switch Count
@@ -16,11 +19,9 @@ Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID,JOYSTICK_TYPE_GAMEPAD,
   false, false,          // No rudder or throttle
   true, true, true);  // Accelerator, Brake, and Steering
 
-float elapsedTime, currentTime, previousTime;
 
 MPU6050 accelgyro; 
-int16_t ax, ay, az, gx, gy, gz;
-int16_t gyroAngleY,accAngleY;
+int16_t ax, ay, az, gx, gy, gz;           
 
 //  A1 - Gas, A2 - Brake.
 int Button1 = 4;  // 
@@ -36,31 +37,26 @@ int Steering;
 int Gas;
 int Brake;
 
-void Comp()
+Smoothed <int> Steer; 
+
+
+const int numReadings = 10;
+int readings[numReadings];      // the readings from the analog input
+int readIndex = 0;              // the index of the current reading
+int total = 0;                  // the running total
+int average = 0;                // the average
+
+void Moving()
 {
-  previousTime = currentTime;
-  currentTime = millis();
-  elapsedTime = (currentTime - previousTime) / 1000;
-
+  
   accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-
-  accAngleY = (atan(ay / sqrt(pow(ax, 2) + pow(az, 2))) * 180 / PI) + 0; //accError "0"
-
-  gyroAngleY = ay + gz * elapsedTime; 
-  Steering = 0.98 * gyroAngleY + 0.2 * accAngleY;
-
-  Steering = Steering / 10;
-  Steering = constrain(Steering, -1600, 1600);
-  if(ax<1000 && ay >15800)
-  {
-    Steering = 1600;
-  }
-  if(ax<1000 && ay <-15800)
-  {
-    Steering = -1600;
-  }
-  Steering = map(Steering, -1600, 1600, 0, 1024);
-
+  Steering = ay;
+  Steering = Steering/100;
+  Steering = constrain(Steering, -160, 160);
+  Steer.add(Steering);
+  Steering = Steer.get();
+  Steering = constrain(Steering, -160, 160);
+  Steering = map(Steering, -160, 160, 0, 1024);
 }
 
 void setup() {
@@ -77,26 +73,29 @@ void setup() {
   // Initialize Joystick Library
   Joystick.begin();
   Joystick.setSteeringRange(0, 1024);
-  Joystick.setAcceleratorRange(0, 1024);
-  Joystick.setBrakeRange(0, 1024);
+  Joystick.setAcceleratorRange(0, 1024);  // ADC min-Max
+  Joystick.setBrakeRange(0, 1024);  // ADC min - Max
 
   //MPU6050
   Wire.begin();
   accelgyro.initialize();
   accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+  //Steering smoothing and EXPO
+  
+  //Steer.begin(SMOOTHED_AVERAGE, 10);  // Initialise the first sensor value store to be the simple average of the last 10 values.
+  Steer.begin(SMOOTHED_EXPONENTIAL, 20);  //Higher numbers will result in less filtering/smoothing. Lower number result in more filtering/smoothing
 }
 
 void loop() 
 {
   // Read Axis
-
-  Comp(); //steering filter
-  
+  Moving();
   Gas = analogRead(A1);
-  Gas = map(Gas, 866, 563, 0, 1024); // ADC min-Max
+  Gas = map(Gas, 866, 563, 0, 1024);
   Gas = constrain(Gas, 0, 1024);
   Brake = analogRead(A2);
-  Brake = map(Brake, 865, 565, 0, 1024); // ADC min - Max
+  Brake = map(Brake, 865, 565, 0, 1024);
   Brake = constrain(Brake, 0, 1024);
 
   //Send values
